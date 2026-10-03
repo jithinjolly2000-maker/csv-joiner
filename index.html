@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CSV Joiner — merge two files on a key</title>
+<style>
+  :root{--paper:#f6f8fa;--panel:#fff;--ink:#1a2027;--muted:#5a6673;--dim:#8a94a0;--line:#e3e8ee;
+    --accent:#7a3fb0;--accent-soft:#7a3fb012;--good:#17854a;--shadow:0 1px 2px rgba(20,25,30,.04),0 6px 20px rgba(20,25,30,.06);}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Segoe UI",system-ui,-apple-system,Arial,sans-serif;background:var(--paper);color:var(--ink);line-height:1.45;font-size:14px}
+  .wrap{max-width:1180px;margin:0 auto;padding:28px 22px 60px}
+  header.top{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:16px;border-bottom:2px solid var(--accent);padding-bottom:15px}
+  .brand h1{font-size:22px;font-weight:700}.brand .sub{color:var(--muted);font-size:13px;margin-top:4px;max-width:66ch}
+  .by{text-align:right;font-size:12px;color:var(--muted)}.by a{color:var(--accent);text-decoration:none}
+  .note{background:var(--accent-soft);border:1px solid var(--line);border-left:3px solid var(--accent);padding:10px 14px;border-radius:6px;font-size:12.5px;color:var(--muted);margin:18px 0 22px}
+  .note b{color:var(--ink)}
+  .step{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);margin:0 0 10px}
+  .uploads{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px}
+  @media(max-width:720px){.uploads{grid-template-columns:1fr}}
+  .drop{background:var(--panel);border:1.5px dashed var(--line);border-radius:12px;padding:20px;text-align:center;box-shadow:var(--shadow);transition:.15s}
+  .drop.hover{border-color:var(--accent);background:var(--accent-soft)}.drop.loaded{border-style:solid;border-color:var(--good);text-align:left}
+  .drop h3{font-size:14px;margin-bottom:5px}.drop p{font-size:12.5px;color:var(--dim)}
+  .drop label.btn{display:inline-block;margin-top:9px;background:var(--accent);color:#fff;font-size:12.5px;font-weight:600;padding:7px 14px;border-radius:7px;cursor:pointer}
+  .drop input[type=file]{display:none}.drop .meta{font-size:12px;color:var(--muted);margin-top:7px}.drop .fname{font-weight:700;color:var(--accent)}
+  .config{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;box-shadow:var(--shadow);margin-bottom:18px}
+  .row{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end}
+  .fld{display:flex;flex-direction:column;gap:4px}.fld label{font-size:11.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+  .fld select{font:inherit;font-size:13.5px;padding:7px 10px;border:1px solid var(--line);border-radius:7px;background:var(--paper);min-width:160px}
+  .run{background:var(--accent);color:#fff;border:none;font:inherit;font-size:14px;font-weight:700;padding:10px 22px;border-radius:9px;cursor:pointer}
+  .run:disabled{opacity:.45;cursor:not-allowed}
+  .sample{background:none;border:1px solid var(--line);font:inherit;font-size:12.5px;font-weight:600;color:var(--muted);padding:9px 15px;border-radius:9px;cursor:pointer}
+  .sample:hover{border-color:var(--accent);color:var(--accent)}
+  .jtypes{display:flex;gap:7px;flex-wrap:wrap}
+  .jt{font-size:12px;border:1px solid var(--line);border-radius:7px;padding:6px 11px;cursor:pointer;background:var(--paper);color:var(--muted);font-weight:600}
+  .jt.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:13px;margin:4px 0 18px}
+  .sc{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:13px 15px;box-shadow:var(--shadow)}
+  .sc .n{font-size:23px;font-weight:800}.sc .l{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;font-weight:600;margin-top:2px}
+  .results{background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);overflow:hidden}
+  .rh{padding:12px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+  .rh h2{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--accent)}
+  .rh button{color:var(--accent);border:1px solid var(--line);border-radius:7px;padding:6px 12px;background:none;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer}
+  .tbl-scroll{overflow:auto;max-height:460px}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th,td{text-align:left;padding:8px 13px;border-bottom:1px solid var(--line);white-space:nowrap}
+  th{font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--dim);font-weight:700;position:sticky;top:0;background:var(--panel)}
+  th.fromA{color:var(--accent)}th.fromB{color:#126e82}
+  tbody tr:hover{background:var(--accent-soft)}
+  footer{margin-top:30px;padding-top:16px;border-top:1px solid var(--line);font-size:12px;color:var(--dim);text-align:center}
+  footer a{color:var(--accent);text-decoration:none}
+  #resultsWrap{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><h1>CSV Joiner</h1>
+      <div class="sub">Merge two CSV files on a shared key column — like a SQL JOIN, in your browser. Inner, left, or full outer join; preview the result and export it as CSV.</div></div>
+    <div class="by">Built by <b>Jithin J</b><br><a href="https://github.com/jithinjolly2000-maker" target="_blank" rel="noopener">github.com/jithinjolly2000-maker</a></div>
+  </header>
+  <div class="note">🔒 <b>Private — runs in your browser.</b> Nothing is uploaded. Load two files, or try the <b>sample</b>.</div>
+
+  <div class="step">Step 1 · Load two files</div>
+  <div class="uploads">
+    <div class="drop" id="dropA" data-side="A"><h3>Left file (A)</h3><p id="pA">Drag &amp; drop a .csv</p>
+      <label class="btn">Choose file<input type="file" accept=".csv" data-side="A"></label><div class="meta" id="metaA"></div></div>
+    <div class="drop" id="dropB" data-side="B"><h3>Right file (B)</h3><p id="pB">Drag &amp; drop a .csv</p>
+      <label class="btn">Choose file<input type="file" accept=".csv" data-side="B"></label><div class="meta" id="metaB"></div></div>
+  </div>
+
+  <div class="step">Step 2 · Configure the join</div>
+  <div class="config">
+    <div class="row">
+      <div class="fld"><label>Key in A</label><select id="keyA"></select></div>
+      <div class="fld"><label>Key in B</label><select id="keyB"></select></div>
+      <div class="fld"><label>Join type</label>
+        <div class="jtypes" id="jtypes">
+          <div class="jt active" data-j="inner">Inner</div>
+          <div class="jt" data-j="left">Left</div>
+          <div class="jt" data-j="outer">Full outer</div>
+        </div>
+      </div>
+    </div>
+    <div class="row" style="margin-top:16px">
+      <button class="run" id="runBtn" disabled>Join ▸</button>
+      <button class="sample" id="sampleBtn">Load sample data</button>
+    </div>
+  </div>
+
+  <div id="resultsWrap">
+    <div class="step">Step 3 · Result</div>
+    <div class="summary" id="summary"></div>
+    <div class="results">
+      <div class="rh"><h2>Joined rows</h2><button id="exportBtn">⤓ Export CSV</button></div>
+      <div class="tbl-scroll" id="resultBody"></div>
+    </div>
+  </div>
+
+  <footer>Static tool · vanilla HTML/CSS/JS · runs 100% in-browser · GitHub Pages · <a href="https://github.com/jithinjolly2000-maker/csv-joiner" target="_blank" rel="noopener">source</a></footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  function parseCSV(text){text=text.replace(/^\uFEFF/,"");var rows=[],row=[],cur="",i=0,inQ=false,c;
+    while(i<text.length){c=text[i];
+      if(inQ){if(c==='"'){if(text[i+1]==='"'){cur+='"';i+=2;continue;}inQ=false;i++;continue;}cur+=c;i++;continue;}
+      if(c==='"'){inQ=true;i++;continue;}if(c===','){row.push(cur);cur="";i++;continue;}
+      if(c==='\r'){i++;continue;}if(c==='\n'){row.push(cur);rows.push(row);row=[];cur="";i++;continue;}cur+=c;i++;}
+    if(cur.length||row.length){row.push(cur);rows.push(row);}if(!rows.length)return{headers:[],records:[]};
+    var headers=rows[0].map(function(h){return h.trim();});var records=[];
+    for(var r=1;r<rows.length;r++){if(rows[r].length===1&&rows[r][0]==="")continue;var o={};for(var h=0;h<headers.length;h++)o[headers[h]]=(rows[r][h]!==undefined?rows[r][h]:"").trim();records.push(o);}
+    return{headers:headers,records:records};}
+  function toCSV(headers,rows){function esc(v){v=(v==null?"":String(v));return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}
+    return headers.map(esc).join(",")+"\n"+rows.map(function(r){return headers.map(function(h){return esc(r[h]);}).join(",");}).join("\n");}
+  function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+
+  var data={A:null,B:null},joinType="inner",result=null,outHeaders=[],aCols=[],bCols=[];
+
+  function load(side,file){var rd=new FileReader();rd.onload=function(e){data[side]=parseCSV(e.target.result);
+    var d=document.getElementById("drop"+side);d.classList.add("loaded");
+    document.getElementById("p"+side).innerHTML='<span class="fname">'+file.name+'</span>';
+    document.getElementById("meta"+side).innerHTML='<b>'+data[side].records.length+'</b> rows · <b>'+data[side].headers.length+'</b> cols';
+    refresh();};rd.readAsText(file);}
+
+  function refresh(){
+    if(data.A){document.getElementById("keyA").innerHTML=data.A.headers.map(function(h){return '<option>'+h+'</option>';}).join("");}
+    if(data.B){document.getElementById("keyB").innerHTML=data.B.headers.map(function(h){return '<option>'+h+'</option>';}).join("");
+      // try match key names
+      if(data.A){var ka=document.getElementById("keyA").value;var i=data.B.headers.indexOf(ka);if(i>=0)document.getElementById("keyB").selectedIndex=i;}}
+    document.getElementById("runBtn").disabled=!(data.A&&data.B);
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll('input[type=file]'),function(inp){
+    inp.addEventListener("change",function(){if(this.files[0])load(this.getAttribute("data-side"),this.files[0]);});});
+  ["A","B"].forEach(function(s){var d=document.getElementById("drop"+s);
+    d.addEventListener("dragover",function(e){e.preventDefault();d.classList.add("hover");});
+    d.addEventListener("dragleave",function(){d.classList.remove("hover");});
+    d.addEventListener("drop",function(e){e.preventDefault();d.classList.remove("hover");if(e.dataTransfer.files[0])load(s,e.dataTransfer.files[0]);});});
+  document.getElementById("jtypes").addEventListener("click",function(e){var t=e.target.closest(".jt");if(!t)return;
+    Array.prototype.forEach.call(this.children,function(x){x.classList.remove("active");});t.classList.add("active");joinType=t.getAttribute("data-j");});
+
+  function join(){
+    var keyA=document.getElementById("keyA").value,keyB=document.getElementById("keyB").value;
+    // output columns: all A cols, then B cols except its key (prefix on collision)
+    aCols=data.A.headers.slice();
+    bCols=data.B.headers.filter(function(h){return h!==keyB;});
+    outHeaders=aCols.concat(bCols.map(function(h){return aCols.indexOf(h)>=0?("B_"+h):h;}));
+    var mapB={};data.B.records.forEach(function(r){ (mapB[r[keyB]]=mapB[r[keyB]]||[]).push(r); });
+    var usedB={},out=[],matched=0;
+    data.A.records.forEach(function(ra){
+      var bs=mapB[ra[keyA]];
+      if(bs&&bs.length){ matched++; bs.forEach(function(rb){ usedB[ra[keyA]]=1; out.push(mk(ra,rb,keyB)); }); }
+      else if(joinType==="left"||joinType==="outer"){ out.push(mk(ra,null,keyB)); }
+    });
+    if(joinType==="outer"){
+      data.B.records.forEach(function(rb){ if(!usedB[rb[keyB]] && (mapB[rb[keyB]]||[]).every(function(x){return !matchedInA(x,keyB,keyA);})){} });
+      // simpler: add B rows whose key not present in A
+      var keysA={};data.A.records.forEach(function(ra){keysA[ra[keyA]]=1;});
+      data.B.records.forEach(function(rb){ if(!keysA[rb[keyB]]) out.push(mk(null,rb,keyB)); });
+    }
+    function matchedInA(){return false;}
+    result={rows:out,matched:matched};
+    renderResult(keyA);
+  }
+  function mk(ra,rb,keyB){var o={};aCols.forEach(function(h){o[h]=ra?ra[h]:"";});
+    bCols.forEach(function(h){var out=aCols.indexOf(h)>=0?("B_"+h):h;o[out]=rb?rb[h]:"";});return o;}
+
+  function renderResult(keyA){
+    var out=result.rows;
+    document.getElementById("summary").innerHTML=
+      sc(out.length,"Rows in result")+sc(result.matched,"A rows matched")+
+      sc(data.A.records.length,"Rows in A")+sc(data.B.records.length,"Rows in B");
+    var head=outHeaders.map(function(h){var cls=aCols.indexOf(h)>=0?"fromA":"fromB";return '<th class="'+cls+'">'+esc(h)+'</th>';}).join("");
+    var body=out.slice(0,500).map(function(r){return '<tr>'+outHeaders.map(function(h){return '<td>'+esc(r[h])+'</td>';}).join("")+'</tr>';}).join("");
+    var moreNote=out.length>500?'<div style="padding:9px 14px;font-size:12px;color:var(--muted)">Showing first 500 of '+out.length+' rows — export for all.</div>':'';
+    document.getElementById("resultBody").innerHTML='<table><thead><tr>'+head+'</tr></thead><tbody>'+body+'</tbody></table>'+moreNote;
+    document.getElementById("resultsWrap").style.display="block";
+    document.getElementById("resultsWrap").scrollIntoView({behavior:"smooth",block:"start"});
+  }
+  function sc(n,l){return '<div class="sc"><div class="n">'+n+'</div><div class="l">'+l+'</div></div>';}
+
+  document.getElementById("runBtn").addEventListener("click",join);
+  document.getElementById("exportBtn").addEventListener("click",function(){if(!result)return;
+    var blob=new Blob([toCSV(outHeaders,result.rows)],{type:"text/csv"});var a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);a.download="joined.csv";a.click();});
+
+  document.getElementById("sampleBtn").addEventListener("click",function(){
+    data.A=parseCSV("CustomerID,Name,Country\nC01,Acme Ltd,UK\nC02,Globex,DE\nC03,Initech,DE\nC04,Umbrella,FR\nC05,Hooli,DE");
+    data.B=parseCSV("CustomerID,Orders,Revenue\nC01,12,15400\nC02,5,8800\nC04,9,22100\nC06,3,4100");
+    ["A","B"].forEach(function(s){var d=document.getElementById("drop"+s);d.classList.add("loaded");
+      document.getElementById("p"+s).innerHTML='<span class="fname">sample_'+s.toLowerCase()+'.csv</span>';
+      document.getElementById("meta"+s).innerHTML='<b>'+data[s].records.length+'</b> rows · <b>'+data[s].headers.length+'</b> cols';});
+    refresh();join();});
+})();
+</script>
+</body>
+</html>
